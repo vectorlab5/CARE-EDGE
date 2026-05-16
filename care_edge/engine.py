@@ -70,7 +70,7 @@ class CareEdgeEngine:
             "score": float(score_e),
             "threshold": self.threshold,
             "route": route,
-            "state_hash": hashlib.sha256(str(self.score_window.scores).encode()).hexdigest(),
+            "state_hash": hashlib.sha256((str(self.score_window.scores) + str(self.labelled_window)).encode()).hexdigest(),
             "alpha": self.alpha,
             "W": self.W,
             "r": self.r,

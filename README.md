@@ -6,9 +6,11 @@ CARE-EDGE is a deployment-time framework for smart-city cyber-physical systems t
 
 - **Selective Routing**: Dynamically decides whether to process an input on the edge or escalate to the cloud based on real-time confidence scores.
 - **Risk Control**: Implements Conformal Risk Control (CRC) to provide finite-sample guarantees on the served risk level ($\alpha$).
-- **Drift Adaptation**: Uses an online adversarial probe to detect deployment-time distribution shift and automatically tighten the routing gate.
-- **Authenticated Provenance**: Generates HMAC-based audit tags and Merkle roots for tamper-evident logging of inference decisions.
-- **Multi-Modal Support**: Optimized backbones for Vision (MobileNetV3), Traffic (Transformer), and Acoustic (AST) sensing tasks.
+- **Advanced Scoring**: Supports classification (-log p), entropy, and **Conformalized Quantile Regression** for time-series anomaly detection.
+- **Drift Adaptation**: Uses an online adversarial probe (FGSM, **30-step PGD**) and natural corruption diagnostics to automatically tighten the routing gate.
+- **Authenticated Provenance**: Generates HMAC-SHA256 audit tags and Merkle roots for tamper-evident logging, following exact architectural specifications for state commitment.
+- **Comprehensive Baselines**: Includes implementations for `Always-edge`, `Always-cloud`, `Entropy-threshold`, `DRL-offload`, and `Bayes-variance` (ensemble).
+- **Multi-Modal Support**: Optimized backbones for Vision (MobileNetV3), Traffic (Transformer Encoder with Positional Embeddings), and Acoustic (Audio Spectrogram Transformer) sensing.
 
 ## Project Structure
 
@@ -16,12 +18,21 @@ CARE-EDGE is a deployment-time framework for smart-city cyber-physical systems t
 code/
 ├── care_edge/              # Core framework library
 │   ├── engine.py           # Main routing engine (Algorithm 1)
-│   ├── models/             # Specialized backbones and scoring heads
-│   ├── modules/            # CRC updater, probe, and provenance modules
-│   └── utils/              # CUSUM and sliding window utilities
+│   ├── baselines.py        # Implementation of 5 comparison baselines
+│   ├── models/             
+│   │   ├── backbones.py    # MobileNetV3, Transformer, AST models
+│   │   └── scoring.py      # Multi-modal scoring heads and ECE metrics
+│   ├── modules/            
+│   │   ├── updater.py      # CRC and Quantile-based threshold logic
+│   │   ├── probe.py        # PGD and natural corruption perturbations
+│   │   └── provenance.py   # HMAC and Merkle audit trail construction
+│   └── utils/              
+│       ├── metrics.py      # Mis-coverage, cost, ECE, and reward tracking
+│       └── stats.py        # CUSUM and efficient sliding windows
 ├── experiments/            # Evaluation harness
-│   ├── dataset_factory.py  # Data loaders and shift simulators
-│   └── run_benchmark.py    # Main script for running benchmarks
+│   ├── dataset_factory.py  # Data loaders with shift/attack simulation
+│   ├── run_benchmark.py    # Main script for running the evaluation grid
+│   └── reproduce_tables.py # Reproduction script for Table 2 and ablations
 └── main.py                 # CLI entry point
 ```
 
@@ -33,43 +44,28 @@ git clone https://github.com/username/care-edge.git
 cd care-edge/code
 
 # Install dependencies
-pip install torch torchvision numpy
+pip install torch torchvision numpy pandas
 ```
 
 ## Usage
 
-### Running Benchmarks
-To evaluate CARE-EDGE across the standard vision, traffic, and audio benchmarks:
+### Running the Full Benchmark
+To reproduce the main results and evaluation grid:
 
 ```bash
 python3 experiments/run_benchmark.py
 ```
 
-### Basic Integration
-```python
-from care_edge.engine import CareEdgeEngine
-from care_edge.models.backbones import VisionBackbone
+### Reproducing Paper Tables
+To generate the summary tables and ablation results:
 
-# Initialize models
-f_e = VisionBackbone(num_classes=4)
-f_c = VisionBackbone(num_classes=4)
+```bash
+python3 experiments/reproduce_tables.py
+```
 
-# Configuration
-config = {
-    "alpha": 0.1,    # Risk budget
-    "W": 2048,       # Calibration window size
-    "r": 0.01,       # Probe rate
-    "epsilon": 0.03, # Perturbation budget
-    "N": 1000        # Provenance batch size
-}
-
-# Initialize engine
-engine = CareEdgeEngine(f_e, f_c, config)
-
-# Process a stream of inputs
-for x in data_stream:
-    result = engine.step(x)
-    print(f"Prediction: {result['prediction']}, Route: {result['route']}")
+### CLI Options
+```bash
+python3 main.py --benchmark BDD100K --shift medium --seed 42
 ```
 
 ## License
